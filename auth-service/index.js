@@ -34,7 +34,8 @@ const UserSchema = new mongoose.Schema({
   role: { type: String, default: 'admin' },
   otp: { type: String },
   otpExpiry: { type: Date },
-  inviteToken: { type: String }
+  inviteToken: { type: String },
+  isVerified: { type: Boolean, default: true }
 });
 
 const User = mongoose.model('User', UserSchema);
@@ -46,22 +47,72 @@ app.post('/signup', async (req, res) => {
   try {
     const { email, password, firstName, lastName, role } = req.body;
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    let user = await User.findOne({ email });
+    if (user && user.isVerified !== false) {
+      return res.status(400).send({ message: 'User already exists.' });
+    }
 
-    const user = new User({
-      email,
-      password: hashedPassword,
-      firstName,
-      lastName,
-      role: role || 'admin'
-    });
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    if (user) {
+      user.password = hashedPassword;
+      user.firstName = firstName;
+      user.lastName = lastName;
+      user.role = role || 'admin';
+      user.otp = otp;
+      user.otpExpiry = new Date(Date.now() + 10 * 60000);
+      user.isVerified = false;
+    } else {
+      user = new User({
+        email,
+        password: hashedPassword,
+        firstName,
+        lastName,
+        role: role || 'admin',
+        otp,
+        otpExpiry: new Date(Date.now() + 10 * 60000),
+        isVerified: false
+      });
+    }
 
     await user.save();
 
-    res.send({ message: 'User registered' });
+    if (transporter) {
+      await transporter.sendMail({
+        from: '"MediCore Security" <seearun20@gmail.com>',
+        to: email,
+        subject: 'Verify your MediCore Registration',
+        text: `Your registration OTP is ${otp}. It will expire in 10 minutes.`
+      });
+    }
 
+    res.send({ message: 'OTP sent to email. Please verify.' });
   } catch (err) {
-    res.status(500).send(err.message);
+    res.status(500).send({ message: err.message });
+  }
+});
+
+app.post('/verify-signup', async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).send({ message: 'User not found' });
+
+    if (user.isVerified !== false) return res.status(400).send({ message: 'User is already verified.' });
+
+    if (!user.otp || user.otp !== otp || user.otpExpiry < new Date()) {
+      return res.status(401).send({ message: 'Invalid or expired OTP code.' });
+    }
+
+    user.isVerified = true;
+    user.otp = undefined;
+    user.otpExpiry = undefined;
+    await user.save();
+
+    res.send({ message: 'Account verified successfully. You can now log in.' });
+  } catch (err) {
+    res.status(500).send({ message: err.message });
   }
 });
 
@@ -75,6 +126,7 @@ app.post('/login', async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) return res.status(401).send({ message: 'Invalid credentials' });
 
+    if (user.isVerified === false) return res.status(401).send({ message: 'Please verify your email first.' });
     if (!user.password || user.password === 'invited') return res.status(401).send({ message: 'Please set your password first using the link sent to your email.' });
 
     const isMatch = await bcrypt.compare(password, user.password);
