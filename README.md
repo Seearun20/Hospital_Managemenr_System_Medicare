@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://img.shields.io/badge/-CLOUD%20%26%20EDGE%20COMPUTING%20PROJECT-0d9488?style=for-the-badge&labelColor=0f172a" />
+<!-- <img src="https://img.shields.io/badge/-CLOUD%20%26%20EDGE%20COMPUTING%20PROJECT-0d9488?style=for-the-badge&labelColor=0f172a" /> -->
 
 # 🏥 MediCore
 ### Distributed Hospital Management System
