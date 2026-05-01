@@ -19,9 +19,9 @@
 
 <br/>
 
-| 5 Microservices | 4 User Roles | 100% Containerized | Fault Isolated |
+| 5 Microservices | 3 User Roles | 100% Containerized | Fault Isolated |
 |:-:|:-:|:-:|:-:|
-| Independent services | Admin · Doctor · Receptionist · Billing | Docker + Compose | Blast-radius contained |
+| Independent services | Admin · Doctor · Receptionist  | Docker + Compose | Blast-radius contained |
 
 </div>
 
